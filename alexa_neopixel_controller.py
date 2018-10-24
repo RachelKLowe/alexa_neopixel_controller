@@ -103,41 +103,31 @@ class AlexaNeoPixelController:
         """
         # Set the two opposite ends of the strip to each have 
         # half of Alexa's pointer's width CYAN
-        print('1')
         for i in range(ALEXA_HALF_POINTER_WIDTH):
             self.np[i] = CYAN
             self.np[-1+(i*-1)] = CYAN
-        print('2')
         # Do this until there are no more black pixels
         np_cache = list(self.np)
         while BLACK in np_cache:
-            print('3')
             # Iterating over half the number of pixels because we will work inward
             # from both sides
             for index in range(NUM_LIGHTS/2):
                 # Front end we are pushing the pointer segment to the middle
                 if np_cache[index] == BLACK and np_cache[index-1] == CYAN:
-                    print('settings %d CYAN' % index)
                     self.np[index] = CYAN
                     self.np[index - ALEXA_HALF_POINTER_WIDTH] = BLUE
                 back_index = NUM_LIGHTS - index - 1
                 # If back end we are pulling the pointer segment to the middle
                 if np_cache[back_index] == BLACK and np_cache[back_index+1] == CYAN:
-                    print('settings %d CYAN' % back_index)
                     self.np[back_index] = CYAN
                     self.np[back_index + ALEXA_HALF_POINTER_WIDTH] = BLUE
-            print('4')
             if self.np_pin:
-                print('4.5')
                 self.np.write()
             else:
                 print('Turning on:')
                 pprint(self.np)
-            print('5')
             np_cache = list(self.np)
-            pprint(np_cache)
             time.sleep(SLEEP_TIME)
-            print('6')
         # Pause extra long here not just one frame
         time.sleep(SLEEP_TIME*32)
         print('DONE')
@@ -183,7 +173,24 @@ class AlexaNeoPixelController:
         Short alternating segments of BLUE/CYAN rapidly alternate colors
         :returns: None
         """
-        pass
+        for n in range(10):
+            odd_frame = n%2 is not 0
+            for i in range(NUM_LIGHTS):
+                odd_light = i%2 is not 0
+                if odd_frame and odd_light:
+                    self.np[i] = CYAN
+                elif odd_frame and not odd_light:
+                    self.np[i] = BLUE
+                elif odd_light:
+                    self.np[i] = BLUE
+                else:
+                    self.np[i] = CYAN
+            if self.np_pin:
+                self.np.write()
+            else:
+                print('Alternating Flash:')
+                pprint(self.np)
+            time.sleep(SLEEP_TIME*2)
 
     def alternating_pulse_fade(self):
         """
@@ -192,8 +199,8 @@ class AlexaNeoPixelController:
         :returns: None
         """
         for i in range(3):
-            self.fade_to_color(CYAN, frames=SLEEP_TIME*12)
-            self.fade_to_color(BLUE, frames=SLEEP_TIME*12)
+            self.fade_to_color(CYAN)
+            self.fade_to_color(BLUE)
 
         time.sleep(SLEEP_TIME*32)
 
@@ -202,7 +209,48 @@ class AlexaNeoPixelController:
         Opposite of turn_on animation. The pointer breaks in half and retreats
         leaving BLACK behind it until the full strip is BLACK
         """
-        self.fade_to_color(BLACK)
+        # Go back to alexa pointer mode
+        center = NUM_LIGHTS/2
+        pointer_indices = range(center-ALEXA_HALF_POINTER_WIDTH, center+ALEXA_HALF_POINTER_WIDTH)
+        for i in range(NUM_LIGHTS):
+            if i in pointer_indices:
+                self.np[i] = CYAN
+            else:
+                self.np[i] = BLUE
+        if self.np_pin:
+            self.np.write()
+        else:
+            print('Turning off:')
+            pprint(self.np)
+        # Pause extra long here not just one frame
+        time.sleep(SLEEP_TIME*32)
+
+        # Do this until there are nothing but black pixels
+        np_cache = list(self.np)
+        while not all([p is BLACK for p in np_cache]):
+            # Iterating over half the number of pixels because we will work inward
+            # from both sides
+            for index in range(NUM_LIGHTS/2):
+                # Front end we are pulling half the pointer segment to the beginning
+                if np_cache[index] == BLUE and np_cache[index + 1] == CYAN:
+                    self.np[index] = CYAN
+                    self.np[index + ALEXA_HALF_POINTER_WIDTH] = BLACK
+                back_index = NUM_LIGHTS - index - 1
+                # If back end we are pushing half the pointer segment to the end
+                if np_cache[back_index] == BLUE and np_cache[back_index - 1] == CYAN:
+                    self.np[back_index] = CYAN
+                    self.np[back_index - ALEXA_HALF_POINTER_WIDTH] = BLACK
+            if not any([p is BLUE for p in np_cache]):
+                for i in range(NUM_LIGHTS):
+                    self.np[i] = BLACK
+            if self.np_pin:
+                self.np.write()
+            else:
+                print('Turning off:')
+                pprint(self.np)
+            np_cache = list(self.np)
+            time.sleep(SLEEP_TIME)
+        print('DONE')
 
     def fade_to_color(self, color, frames=10):
         """
@@ -265,6 +313,7 @@ def unit_test():
 
     NUM_LIGHTS = 4
     ALEXA_POINTER_WIDTH = 2
+    ALEXA_HALF_POINTER_WIDTH = int(ALEXA_POINTER_WIDTH/2)
     SLEEP_TIME = 0
 
     for i in range(0, 512):
@@ -277,11 +326,10 @@ def unit_test():
         NUM_LIGHTS += 2
         if i%4:
             ALEXA_POINTER_WIDTH += 2
+            ALEXA_HALF_POINTER_WIDTH += 1
 
-npc = AlexaNeoPixelController(np_pin=4, button_pin=0)
+npc = AlexaNeoPixelController()
+#npc = AlexaNeoPixelController(np_pin=4)
 npc.play()
 
-# if __name__ == "__main__":
-#     npc = AlexaNeoPixelController()
-#     npc.play()
-    # unit_test()
+# unit_test()
