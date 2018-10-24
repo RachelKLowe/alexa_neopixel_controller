@@ -17,6 +17,7 @@ BLACK = (0, 0, 0)
 
 # Number of lights in string - has to be even
 NUM_LIGHTS = 20
+HALF_NUM_LIGHTS = 10
 # Number of lights wide for each segment when Alexa is "thinking"
 ALEXA_ALTERNATING_FLASH_WIDTH = 2
 # Must be even - width in LEDs of the cyan section that points at the user
@@ -111,7 +112,7 @@ class AlexaNeoPixelController:
         while BLACK in np_cache:
             # Iterating over half the number of pixels because we will work inward
             # from both sides
-            for index in range(NUM_LIGHTS/2):
+            for index in range(HALF_NUM_LIGHTS):
                 # Front end we are pushing the pointer segment to the middle
                 if np_cache[index] == BLACK and np_cache[index-1] == CYAN:
                     self.np[index] = CYAN
@@ -144,7 +145,7 @@ class AlexaNeoPixelController:
             current_center = list(self.np).index(CYAN) + ALEXA_HALF_POINTER_WIDTH
             offset = (urandom.getrandbits(1) + 1) * ALEXA_LOOK_OFFSET_BASE
             # Hover around true center
-            if current_center > NUM_LIGHTS/2:
+            if current_center > HALF_NUM_LIGHTS:
                 offset *= -1
             new_center = current_center + offset
             # Don't want to deal with wrapping around properly or ensuring this
@@ -210,8 +211,7 @@ class AlexaNeoPixelController:
         leaving BLACK behind it until the full strip is BLACK
         """
         # Go back to alexa pointer mode
-        center = NUM_LIGHTS/2
-        pointer_indices = range(center-ALEXA_HALF_POINTER_WIDTH, center+ALEXA_HALF_POINTER_WIDTH)
+        pointer_indices = range(HALF_NUM_LIGHTS-ALEXA_HALF_POINTER_WIDTH, HALF_NUM_LIGHTS+ALEXA_HALF_POINTER_WIDTH)
         for i in range(NUM_LIGHTS):
             if i in pointer_indices:
                 self.np[i] = CYAN
@@ -227,10 +227,10 @@ class AlexaNeoPixelController:
 
         # Do this until there are nothing but black pixels
         np_cache = list(self.np)
-        while not all([p is BLACK for p in np_cache]):
+        while BLUE in np_cache or CYAN in np_cache:
             # Iterating over half the number of pixels because we will work inward
             # from both sides
-            for index in range(NUM_LIGHTS/2):
+            for index in range(HALF_NUM_LIGHTS):
                 # Front end we are pulling half the pointer segment to the beginning
                 if np_cache[index] == BLUE and np_cache[index + 1] == CYAN:
                     self.np[index] = CYAN
@@ -240,7 +240,7 @@ class AlexaNeoPixelController:
                 if np_cache[back_index] == BLUE and np_cache[back_index - 1] == CYAN:
                     self.np[back_index] = CYAN
                     self.np[back_index - ALEXA_HALF_POINTER_WIDTH] = BLACK
-            if not any([p is BLUE for p in np_cache]):
+            if BLUE not in np_cache:
                 for i in range(NUM_LIGHTS):
                     self.np[i] = BLACK
             if self.np_pin:
